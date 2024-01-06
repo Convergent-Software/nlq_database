@@ -44,6 +44,10 @@ class UI:
             st.session_state["tabs"].append(new_tab_name)
             self.initialize_query_log(self.create_key("query_log", new_tab_name))
 
+    def delete_all_tabs(self):
+        st.session_state["tabs"] = ["Database Connection"]
+        st.session_state["active_tab"] = "Database Connection"
+
     @staticmethod
     def create_key(prefix: str, tab_name: str) -> str:
         return f"{prefix}_{tab_name}"
@@ -63,9 +67,10 @@ class UI:
 
     def handle_sidebar(self) -> None:
         with st.sidebar:
-            tab1, tab2, tab3 = st.tabs(["Database", "Schema", "Conversations"])
+            pages = ["Database", "Schema", "Conversations"]
+            page = st.radio("Go to", pages)
 
-            with tab1:
+            if page == "Database":
                 host = st.text_input("Host")
                 port = st.text_input("Port")
                 user = st.text_input("User")
@@ -82,7 +87,7 @@ class UI:
                 if st.button("Close Database"):
                     self.handle_close_database_button()
 
-            with tab2:
+            elif page == "Schema":
                 if "schema" in st.session_state:
                     schema = st.session_state["schema"]
                     for table_name, columns in schema.items():
@@ -92,14 +97,18 @@ class UI:
                 else:
                     st.info("No schema available. Please connect to a database first.")
 
-            with tab3:
+            elif page == "Conversations":
+                new_tab_name = st.text_input("Enter name for new chat:")
+                if st.button("Add", type="primary"):
+                    self.add_new_tab(new_tab_name)
+
+                if st.button("Clear chats"):
+                    self.delete_all_tabs()
+
                 for tab in st.session_state["tabs"]:
                     if tab != "Database Connection":
                         if st.button(tab):
                             st.session_state["active_tab"] = tab
-                new_tab_name = st.text_input("Enter name for new chat:")
-                if st.button("Add", type="primary"):
-                    self.add_new_tab(new_tab_name)
 
     def connect_to_database(
         self, host: str, port: str, user: str, password: str, dbname: str
