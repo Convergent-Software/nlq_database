@@ -1,6 +1,8 @@
 from typing import Optional
 from pandas import DataFrame
+from sqlalchemy import create_engine
 from openai_query import OpenAIQuery
+from pygwalker.api.streamlit import StreamlitRenderer, init_streamlit_comm
 import os
 import pandas as pd
 import streamlit as st
@@ -11,6 +13,21 @@ import json
 class UI:
     def __init__(self) -> None:
         self.initialize_session_state()
+
+    def setup_pygwalker(self) -> None:
+        init_streamlit_comm()
+
+        @st.cache_resource
+        def get_pyg_renderer() -> "StreamlitRenderer":
+            engine = create_engine(
+                f"postgresql+psycopg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+            )
+            query = "SELECT * FROM oil_data"
+            df = pd.read_sql_query(query, engine)
+            return StreamlitRenderer(df, spec="./gw_config.json", debug=False)
+
+        renderer = get_pyg_renderer()
+        renderer.render_explore()
 
     def initialize_session_state(self) -> None:
         st.session_state.setdefault("tabs", ["Database Connection"])
@@ -40,11 +57,34 @@ class UI:
 
     def handle_sidebar(self) -> None:
         with st.sidebar:
-            new_tab_name = st.text_input("Enter name for new tab:")
-            if st.button("Add Tab"):
-                self.add_new_tab(new_tab_name)
-            st.sidebar.title("Navigation")
-            self.create_navigation_buttons()
+            tab1, tab2 = st.tabs(["Database", "Conversations"])
+
+            with tab1:
+                host = st.text_input("Host")
+                port = st.text_input("Port")
+                user = st.text_input("User")
+                password = st.text_input("Password", type="password")
+                dbname = st.text_input("Database")
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    if st.button("Close Database"):
+                        self.handle_close_database_button()
+
+                with col2:
+                    if st.button("Connect", type="primary"):
+                        connection = self.connect_to_database(
+                            host, port, user, password, dbname
+                        )
+                        if connection:
+                            self.handle_successful_connection(connection)
+
+            with tab2:
+                new_tab_name = st.text_input("Enter name for new chat:")
+                if st.button("Add", type="primary"):
+                    self.add_new_tab(new_tab_name)
+                self.create_navigation_buttons()
 
     def connect_to_database(
         self, host: str, port: str, user: str, password: str, dbname: str
@@ -61,18 +101,11 @@ class UI:
     def handle_database_connection_tab(self) -> None:
         if st.session_state["active_tab"] == "Database Connection":
             st.title("Database Connection")
-            host = st.text_input("Host")
-            port = st.text_input("Port")
-            user = st.text_input("User")
-            password = st.text_input("Password", type="password")
-            dbname = st.text_input("Database")
-
-            if st.button("Connect"):
-                connection = self.connect_to_database(
-                    host, port, user, password, dbname
-                )
-                if connection:
-                    self.handle_successful_connection(connection)
+            if "connection" in st.session_state:
+                st.success("Connected to the database!")
+                self.retrieve_and_store_schema(st.session_state["cursor"])
+            else:
+                st.error("Not connected to any database.")
 
     def handle_successful_connection(self, connection):
         st.success("Connected to the database!")
@@ -109,8 +142,9 @@ class UI:
 
     def create_navigation_buttons(self):
         for tab in st.session_state["tabs"]:
-            if st.button(tab):
-                st.session_state["active_tab"] = tab
+            if tab != "Database Connection":
+                if st.button(tab):
+                    st.session_state["active_tab"] = tab
 
     def execute_sql_query(self, cursor, query: str) -> Optional[DataFrame]:
         try:
@@ -147,13 +181,12 @@ class UI:
 
         if st.session_state["active_tab"] != "Database Connection":
             selected_tab = st.session_state["active_tab"]
-            st.title(f"Natural Language to SQL Query - {selected_tab}")
+            st.title(selected_tab)
 
             self.initialize_query_log(selected_tab)
             self.handle_query_generation(selected_tab)
             self.display_generated_query(selected_tab)
             self.display_dataframe(selected_tab)
-            self.handle_close_database_button(selected_tab)
 
     def handle_query_generation(self, selected_tab):
         user_input_key = self.create_key("user_input", selected_tab)
@@ -212,9 +245,8 @@ class UI:
         if dataframe_key in st.session_state:
             st.dataframe(st.session_state[dataframe_key])
 
-    def handle_close_database_button(self, tab_name: str) -> None:
-        if st.button("Close Database", key=f"close_{tab_name}"):
-            if "cursor" in st.session_state and "connection" in st.session_state:
-                st.session_state["cursor"].close()
-                st.session_state["cursor"] = None
-                st.session_state["active_tab"] = "Database Connection"
+    def handle_close_database_button(self) -> None:
+        if "cursor" in st.session_state and "connection" in st.session_state:
+            st.session_state["cursor"].close()
+            st.session_state["cursor"] = None
+            st.session_state["active_tab"] = "Database Connection"
