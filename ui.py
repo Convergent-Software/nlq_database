@@ -20,7 +20,7 @@ class UI:
         @st.cache_resource
         def get_pyg_renderer() -> "StreamlitRenderer":
             connection_string = (
-                f"postgresql+psycopg2://"
+                f"postgresql+psycopg://"
                 f"{os.getenv('DB_USER')}:"
                 f"{os.getenv('DB_PASSWORD')}@"
                 f"{os.getenv('DB_HOST')}:"
@@ -52,23 +52,12 @@ class UI:
     def create_key(prefix: str, tab_name: str) -> str:
         return f"{prefix}_{tab_name}"
 
-    def apply_styles(self) -> None:
-        st.markdown(
-            """
-        <style>
-        .reportview-container {
-            background: url("https://images.unsplash.com/photo-1581093458795-8e3b6e3b1b4b");
-            background-size: cover;
-        }
-        </style>
-        """,
-            unsafe_allow_html=True,
-        )
-
     def handle_sidebar(self) -> None:
         with st.sidebar:
-            pages = ["Database", "Schema", "Conversations"]
+            pages = ["Database", "Schema", "Conversations", "Visualizations"]
             page = st.radio("Go to", pages)
+
+            st.session_state["current_page"] = page
 
             if page == "Database":
                 host = st.text_input("Host")
@@ -109,6 +98,9 @@ class UI:
                     if tab != "Database Connection":
                         if st.button(tab):
                             st.session_state["active_tab"] = tab
+
+            elif page == "Visualizations":
+                pass
 
     def connect_to_database(
         self, host: str, port: str, user: str, password: str, dbname: str
