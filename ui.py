@@ -163,6 +163,7 @@ class UI:
             return df
         except Exception as e:
             st.error(f"Error executing query: {e}")
+            cursor.execute("ROLLBACK")
             return None
 
     def initialize_query_log(self, tab_key: str) -> None:
