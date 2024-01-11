@@ -11,13 +11,13 @@ class OilDataGenerator:
     def generate_csv(self, file_name: str, rows: int = 100) -> None:
         with open(file_name, "w", newline="") as csvfile:
             fieldnames = [
-                "Company",
-                "Well_Name",
-                "Oil_Production_bbl",
-                "Gas_Production_mcf",
-                "Region",
-                "Status",
-                "Owner",
+                "company",
+                "well_Name",
+                "oil_production_bbl",
+                "gas_production_mcf",
+                "region",
+                "status",
+                "owner",
             ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()

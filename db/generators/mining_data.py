@@ -11,13 +11,13 @@ class MiningDataGenerator:
     def generate_csv(self, file_name: str, rows: int = 100) -> None:
         with open(file_name, "w", newline="") as csvfile:
             fieldnames = [
-                "Company",
-                "Mine_Name",
-                "Gold_Production_oz",
-                "Silver_Production_oz",
-                "Region",
-                "Status",
-                "Owner",
+                "company",
+                "mine_name",
+                "gold_production_oz",
+                "silver_production_oz",
+                "region",
+                "status",
+                "owner",
             ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
